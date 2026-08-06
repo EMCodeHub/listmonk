@@ -1,0 +1,13 @@
+[app]
+address = "0.0.0.0:9000"
+
+[db]
+host = "postgres"
+port = 5432
+user = "consthruads"
+password = ""
+database = "listmonk"
+ssl_mode = "disable"
+max_open = 25
+max_idle = 10
+max_lifetime = "5m"

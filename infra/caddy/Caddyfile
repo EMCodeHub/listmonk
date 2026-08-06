@@ -1,0 +1,14 @@
+{
+	email {$CADDY_ACME_EMAIL}
+	admin off
+}
+
+{$SITE_SCHEME}://{$APP_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy listmonk:9000
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	log {
+		output stdout
+		format json
+	}
+}

@@ -1,0 +1,9 @@
+services:
+  reverse-proxy:
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?APP_DOMAIN is required}
+      SITE_SCHEME: https
+      CADDY_ACME_EMAIL: ${CADDY_ACME_EMAIL:?CADDY_ACME_EMAIL is required}
+
+  postgres:
+    shm_size: 256mb

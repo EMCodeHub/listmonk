@@ -1,0 +1,11 @@
+{
+  "ConfigurationSetName": "listmonk-production",
+  "EventDestinationName": "sns-deliveries",
+  "EventDestination": {
+    "Enabled": true,
+    "MatchingEventTypes": ["DELIVERY"],
+    "SnsDestination": {
+      "TopicArn": "arn:aws:sns:us-east-1:498976383301:listmonk-ses-deliveries"
+    }
+  }
+}

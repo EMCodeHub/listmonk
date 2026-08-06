@@ -1,0 +1,76 @@
+name: consthruads-email
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-consthruads}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_LISTMONK_DB:-listmonk}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    security_opt: [no-new-privileges:true]
+
+  listmonk:
+    image: listmonk/listmonk:v5.1.0
+    restart: unless-stopped
+    command:
+      - sh
+      - -c
+      - ./listmonk --install --idempotent --yes --config '' && ./listmonk --upgrade --yes --config '' && ./listmonk --config ''
+    environment:
+      LISTMONK_app__address: 0.0.0.0:9000
+      LISTMONK_db__host: postgres
+      LISTMONK_db__port: 5432
+      LISTMONK_db__user: ${POSTGRES_USER:-consthruads}
+      LISTMONK_db__password: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      LISTMONK_db__database: ${POSTGRES_LISTMONK_DB:-listmonk}
+      LISTMONK_db__ssl_mode: disable
+      LISTMONK_ADMIN_USER: ${LISTMONK_ADMIN_USERNAME:-admin}
+      LISTMONK_ADMIN_PASSWORD: ${LISTMONK_ADMIN_PASSWORD:?LISTMONK_ADMIN_PASSWORD is required}
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [backend, proxy]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9000/"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+    security_opt: [no-new-privileges:true]
+
+  reverse-proxy:
+    image: caddy:2.9-alpine
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+      SITE_SCHEME: ${SITE_SCHEME:-http}
+      CADDY_ACME_EMAIL: ${CADDY_ACME_EMAIL:-}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      listmonk: { condition: service_healthy }
+    networks: [proxy]
+    security_opt: [no-new-privileges:true]
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  backend:
+    internal: true
+  proxy:
