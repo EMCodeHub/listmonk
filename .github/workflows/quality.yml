@@ -1,0 +1,22 @@
+name: quality
+on: [push, pull_request]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m compileall -q scripts deploy
+      - run: docker compose -f docker-compose.yml -f docker-compose.production.yml config --quiet
+        env:
+          POSTGRES_PASSWORD: ci-placeholder
+          LISTMONK_ADMIN_PASSWORD: ci-placeholder
+          APP_DOMAIN: example.invalid
+          CADDY_ACME_EMAIL: ops@example.invalid
+      - name: Reject contacts, secrets and dumps in Git
+        shell: bash
+        run: |
+          bad="$(git ls-files | grep -E '(^|/)(private|secrets?|backups?|clean_emails_|listmonk_emails)(/|$)|(^|/)\.env$|\.(sql|dump|sqlite|eml|mbox|pst)$|(^|/)(emails|subscribers|bounces).*\.csv$' || true)"
+          test -z "$bad" || { echo "$bad"; exit 1; }

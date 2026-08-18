@@ -20,6 +20,10 @@ secrets/
 
 # Contact lists, email exports and message data
 clean_emails_real_estate/
+clean_emails_interior_design/
+clean_emails_*/
+leads-big-scrap-*/
+leads-big-scrap-interior-design-copy/
 listmonk_emails/
 abuse_file/
 bounces_real_estate_usa.csv
@@ -60,5 +64,6 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 *.log
+.clean_vps_sync_*
 .DS_Store
 Thumbs.db

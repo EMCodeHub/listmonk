@@ -27,6 +27,10 @@ FOLDER_RE = re.compile(r"^\d+ - (.+?) \((\d+)\)$")
 
 
 def build_stage(root: Path, output: Path) -> dict:
+    suppression_path = root / "manual_suppressions.json"
+    suppressed = set()
+    if suppression_path.exists():
+        suppressed = {email.lower() for email in json.loads(suppression_path.read_text(encoding="utf-8"))["emails"]}
     manifest, total_rows = [], 0
     with output.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle); writer.writerow(["list_name", "email", "name", "attribs"])
@@ -39,25 +43,28 @@ def build_stage(root: Path, output: Path) -> dict:
                 country, expected = match.group(1), int(match.group(2))
                 display = "USA" if country == "United States" else country
                 list_name = f"{display} {niche} leads *"
-                count = 0
+                count = source_count = 0
                 with csv_path.open(encoding="utf-8-sig", newline="") as source:
                     for row in csv.DictReader(source):
                         email = row["email"].strip().lower()
                         if not email:
                             continue
+                        source_count += 1
+                        if email in suppressed:
+                            continue
                         attribs = row.get("attributes", "{}") or "{}"
                         json.loads(attribs)
                         writer.writerow([list_name, email, row.get("name", ""), attribs])
                         count += 1; total_rows += 1
-                if count != expected:
-                    raise RuntimeError(f"Expected {expected} rows, got {count}: {csv_path}")
+                if source_count != expected:
+                    raise RuntimeError(f"Expected {expected} source rows, got {source_count}: {csv_path}")
                 if count == 0:
                     writer.writerow([list_name, "", "", "{}"])
                 manifest.append({"name": list_name, "country": country, "niche": niche, "rows": count})
     names = [m["name"] for m in manifest]
     if len(names) != 603 or len(set(names)) != 603:
         raise RuntimeError(f"Manifest invariant failed: total={len(names)} unique={len(set(names))}")
-    return {"lists": len(names), "rows": total_rows, "by_niche": {n: sum(x["rows"] for x in manifest if x["niche"] == n) for n in COLLECTIONS.values()}}
+    return {"lists": len(names), "rows": total_rows, "suppressed": len(suppressed), "by_niche": {n: sum(x["rows"] for x in manifest if x["niche"] == n) for n in COLLECTIONS.values()}}
 
 
 def run_ssh(client: paramiko.SSHClient, command: str, timeout: int = 600) -> str:
@@ -151,13 +158,13 @@ COMMIT;
 
 def main() -> None:
     parser = argparse.ArgumentParser(); parser.add_argument("--root", type=Path, required=True); parser.add_argument("--apply", action="store_true")
-    parser.add_argument("--host", default="187.127.70.251"); parser.add_argument("--user", default="root")
+    parser.add_argument("--host", default=os.environ.get("LISTMONK_VPS_HOST")); parser.add_argument("--user", default="root")
     args = parser.parse_args(); stage = args.root / ".clean_vps_sync_dry_run.csv"
     if not args.apply:
         result = build_stage(args.root, stage); stage.unlink(missing_ok=True); print(json.dumps(result, indent=2)); return
     password = os.environ.get("LISTMONK_VPS_PASSWORD")
-    if not password:
-        raise SystemExit("LISTMONK_VPS_PASSWORD is required")
+    if not password or not args.host:
+        raise SystemExit("LISTMONK_VPS_PASSWORD and LISTMONK_VPS_HOST are required")
     print(json.dumps(apply(args.root, args.host, args.user, password), ensure_ascii=False, indent=2))
 
 
