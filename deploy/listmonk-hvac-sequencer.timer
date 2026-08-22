@@ -1,0 +1,12 @@
+[Unit]
+Description=Poll the Listmonk HVAC campaign queue every minute
+
+[Timer]
+OnBootSec=45s
+OnUnitActiveSec=60s
+AccuracySec=5s
+Persistent=true
+Unit=listmonk-hvac-sequencer.service
+
+[Install]
+WantedBy=timers.target

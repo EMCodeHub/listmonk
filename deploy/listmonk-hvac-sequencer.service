@@ -1,0 +1,9 @@
+[Unit]
+Description=Start the next safe Listmonk HVAC campaign
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/listmonk-hvac-campaign-sequencer
+
