@@ -1,3 +1,8 @@
+
+# production password:   pepesaurio
+
+
+
 # Listmonk + Amazon SES
 
 Despliegue reproducible de Listmonk con PostgreSQL, Caddy y Amazon SES como proveedor SMTP. El repositorio contiene solamente código, plantillas y parámetros operativos; no contiene listas de contactos, mensajes, volcados de bases de datos ni credenciales.
